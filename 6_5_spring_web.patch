@@ -1,0 +1,106 @@
+Index: src/main/webapp/WEB-INF/web.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/webapp/WEB-INF/web.xml	(date 1444849904000)
++++ src/main/webapp/WEB-INF/web.xml	(revision )
+@@ -5,6 +5,22 @@
+ 
+     <display-name>Topjava</display-name>
+ 
++    <context-param>
++        <param-name>spring.profiles.default</param-name>
++        <param-value>postgres,datajpa</param-value>
++    </context-param>
++
++    <context-param>
++        <param-name>contextConfigLocation</param-name>
++        <param-value>
++            classpath:spring/spring-app.xml
++            classpath:spring/spring-db.xml
++        </param-value>
++    </context-param>
++
++    <listener>
++        <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
++    </listener>
+     <servlet>
+         <servlet-name>userServlet</servlet-name>
+         <servlet-class>ru.javawebinar.topjava.web.UserServlet</servlet-class>
+Index: pom.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- pom.xml	(date 1444849904000)
++++ pom.xml	(revision )
+@@ -83,10 +83,22 @@
+ 
+         <!--Web-->
+         <dependency>
+-            <groupId>javax.servlet</groupId>
+-            <artifactId>servlet-api</artifactId>
+-            <version>2.5</version>
++            <groupId>org.apache.tomcat</groupId>
++            <artifactId>tomcat-servlet-api</artifactId>
++            <version>${tomcat.version}</version>
+             <scope>provided</scope>
++        </dependency>
++
++        <dependency>
++            <groupId>org.springframework</groupId>
++            <artifactId>spring-web</artifactId>
++            <version>${spring.version}</version>
++            <exclusions>
++                <exclusion>
++                    <groupId>commons-logging</groupId>
++                    <artifactId>commons-logging</artifactId>
++                </exclusion>
++            </exclusions>
+         </dependency>
+ 
+         <dependency>
+Index: src/main/java/ru/javawebinar/topjava/web/MealServlet.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/web/MealServlet.java	(date 1444849904000)
++++ src/main/java/ru/javawebinar/topjava/web/MealServlet.java	(revision )
+@@ -1,8 +1,8 @@
+ package ru.javawebinar.topjava.web;
+ 
+-import org.springframework.context.support.ClassPathXmlApplicationContext;
++import org.springframework.web.context.WebApplicationContext;
++import org.springframework.web.context.support.WebApplicationContextUtils;
+ import ru.javawebinar.topjava.LoggerWrapper;
+-import ru.javawebinar.topjava.Profiles;
+ import ru.javawebinar.topjava.model.UserMeal;
+ import ru.javawebinar.topjava.util.TimeUtil;
+ import ru.javawebinar.topjava.web.meal.UserMealRestController;
+@@ -25,23 +25,13 @@
+ public class MealServlet extends HttpServlet {
+     private static final LoggerWrapper LOG = LoggerWrapper.get(MealServlet.class);
+ 
+-    private ClassPathXmlApplicationContext springContext;
+     private UserMealRestController mealController;
+ 
+     @Override
+     public void init(ServletConfig config) throws ServletException {
+         super.init(config);
+-        springContext = new ClassPathXmlApplicationContext();
+-        springContext.getEnvironment().setActiveProfiles(Profiles.POSTGRES, Profiles.DATAJPA);
+-        springContext.setConfigLocations("spring/spring-app.xml", "spring/spring-db.xml");
+-        springContext.refresh();
++        WebApplicationContext springContext = WebApplicationContextUtils.getRequiredWebApplicationContext(getServletContext());
+         mealController = springContext.getBean(UserMealRestController.class);
+-    }
+-
+-    @Override
+-    public void destroy() {
+-        springContext.close();
+-        super.destroy();
+     }
+ 
+     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws javax.servlet.ServletException, IOException {

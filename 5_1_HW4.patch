@@ -1,0 +1,185 @@
+Index: src/main/java/ru/javawebinar/topjava/repository/jpa/JpaUserMealRepositoryImpl.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/repository/jpa/JpaUserMealRepositoryImpl.java	(revision 94197cea19b660d17ab82db933c0ef0fb37be304)
++++ src/main/java/ru/javawebinar/topjava/repository/jpa/JpaUserMealRepositoryImpl.java	(revision )
+@@ -1,9 +1,14 @@
+ package ru.javawebinar.topjava.repository.jpa;
+ 
++import org.springframework.dao.support.DataAccessUtils;
+ import org.springframework.stereotype.Repository;
++import org.springframework.transaction.annotation.Transactional;
++import ru.javawebinar.topjava.model.User;
+ import ru.javawebinar.topjava.model.UserMeal;
+ import ru.javawebinar.topjava.repository.UserMealRepository;
+ 
++import javax.persistence.EntityManager;
++import javax.persistence.PersistenceContext;
+ import java.time.LocalDateTime;
+ import java.util.List;
+ 
+@@ -13,30 +18,57 @@
+  */
+ 
+ @Repository
++@Transactional(readOnly = true)
+ public class JpaUserMealRepositoryImpl implements UserMealRepository {
+ 
++    @PersistenceContext
++    private EntityManager em;
++
+     @Override
++    @Transactional
+     public UserMeal save(UserMeal userMeal, int userId) {
+-        return null;
++        User ref = em.getReference(User.class, userId);
++        userMeal.setUser(ref);
++
++        if (userMeal.isNew()) {
++            em.persist(userMeal);
++            return userMeal;
++        } else {
++            if (get(userMeal.getId(), userId) == null) return null;
++            return em.merge(userMeal);
+-    }
++        }
++    }
+ 
+     @Override
++    @Transactional
+     public boolean delete(int id, int userId) {
+-        return false;
++        return em.createNamedQuery(UserMeal.DELETE)
++                .setParameter("id", id)
++                .setParameter("userId", userId)
++                .executeUpdate() != 0;
+     }
+ 
+     @Override
+     public UserMeal get(int id, int userId) {
+-        return null;
++        List<UserMeal> userMeals = em.createNamedQuery(UserMeal.GET, UserMeal.class)
++                .setParameter("id", id)
++                .setParameter("userId", userId)
++                .getResultList();
++        return DataAccessUtils.singleResult(userMeals);
+     }
+ 
+     @Override
+     public List<UserMeal> getAll(int userId) {
+-        return null;
++        return em.createNamedQuery(UserMeal.ALL_SORTED, UserMeal.class)
++                .setParameter("userId", userId)
++                .getResultList();
+     }
+ 
+     @Override
+     public List<UserMeal> getBetween(LocalDateTime startDate, LocalDateTime endDate, int userId) {
+-        return null;
++        return em.createNamedQuery(UserMeal.GET_BETWEEN, UserMeal.class)
++                .setParameter("userId", userId)
++                .setParameter("startDate", startDate)
++                .setParameter("endDate", endDate).getResultList();
+     }
+ }
+\ No newline at end of file
+Index: pom.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- pom.xml	(revision 94197cea19b660d17ab82db933c0ef0fb37be304)
++++ pom.xml	(revision )
+@@ -27,7 +27,7 @@
+         <junit.version>4.12</junit.version>
+ 
+         <!-- Hibernate -->
+-        <hibernate.version>5.0.1.Final</hibernate.version>
++        <hibernate.version>5.0.2.Final</hibernate.version>
+         <hibernate-validator.version>5.1.3.Final</hibernate-validator.version>
+     </properties>
+ 
+@@ -124,6 +124,11 @@
+         <dependency>
+             <groupId>org.hibernate</groupId>
+             <artifactId>hibernate-entitymanager</artifactId>
++            <version>${hibernate.version}</version>
++        </dependency>
++        <dependency>
++            <groupId>org.hibernate</groupId>
++            <artifactId>hibernate-java8</artifactId>
+             <version>${hibernate.version}</version>
+         </dependency>
+         <dependency>
+Index: src/main/java/ru/javawebinar/topjava/model/UserMeal.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/model/UserMeal.java	(revision 94197cea19b660d17ab82db933c0ef0fb37be304)
++++ src/main/java/ru/javawebinar/topjava/model/UserMeal.java	(revision )
+@@ -1,22 +1,47 @@
+ package ru.javawebinar.topjava.model;
+ 
+-import javax.persistence.FetchType;
+-import javax.persistence.ManyToOne;
++import org.hibernate.validator.constraints.NotEmpty;
++
++import javax.persistence.*;
++import javax.validation.constraints.NotNull;
+ import java.time.LocalDateTime;
+ 
+ /**
+  * GKislin
+  * 11.01.2015.
+  */
++@NamedQueries({
++        @NamedQuery(name = UserMeal.GET, query = "SELECT m FROM UserMeal m WHERE m.id=:id AND m.user.id=:userId"),
++        @NamedQuery(name = UserMeal.ALL_SORTED, query = "SELECT m FROM UserMeal m WHERE m.user.id=:userId ORDER BY m.dateTime DESC"),
++        @NamedQuery(name = UserMeal.DELETE, query = "DELETE FROM UserMeal m WHERE m.id=:id AND m.user.id=:userId"),
++        @NamedQuery(name = UserMeal.GET_BETWEEN,
++                query = "SELECT m from UserMeal m WHERE m.user.id=:userId " +
++                        " AND m.dateTime BETWEEN :startDate AND :endDate ORDER BY m.dateTime DESC"),
++
++//        @NamedQuery(name = UserMeal.UPDATE, query = "UPDATE UserMeal m SET m.dateTime = :datetime, m.calories= :calories," +
++//                "m.description=:desc where m.id=:id and m.user.id=:userId")
++})
++@Entity
++@Table(name = "meals")
+ public class UserMeal extends BaseEntity {
++    public static final String GET = "UserMeal.get";
++    public static final String ALL_SORTED = "UserMeal.getAll";
++    public static final String DELETE = "UserMeal.delete";
++    public static final String GET_BETWEEN = "UserMeal.getBetween";
+ 
++    @Column(name = "date_time", nullable = false)
++    @NotNull
+     protected LocalDateTime dateTime;
+ 
++    @Column(name = "description", nullable = false)
++    @NotEmpty
+     protected String description;
+ 
++    @Column(name = "calories")
+     protected int calories;
+ 
+    -->
+     public UserMeal() {
+@@ -63,6 +88,14 @@
+ 
+     public void setCalories(int calories) {
+         this.calories = calories;
++    }
++
++    public User getUser() {
++        return user;
++    }
++
++    public void setUser(User user) {
++        this.user = user;
+     }
+ 
+     @Override
+\ No newline at end of file

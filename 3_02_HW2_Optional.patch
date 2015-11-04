@@ -1,0 +1,660 @@
+Index: src/main/webapp/css/style.css
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/webapp/css/style.css	(revision )
++++ src/main/webapp/css/style.css	(revision )
+@@ -0,0 +1,24 @@
++dl {
++    background: none repeat scroll 0 0 #FAFAFA;
++    margin: 8px 0;
++    padding: 0;
++}
++
++dt {
++    display: inline-block;
++    width: 170px;
++}
++
++dd {
++    display: inline-block;
++    margin-left: 8px;
++    vertical-align: top;
++}
++
++.normal {
++    color: green;
++}
++
++.exceeded {
++    color: red;
++}
+Index: src/main/java/ru/javawebinar/topjava/repository/UserMealRepository.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/repository/UserMealRepository.java	(date 1443048423000)
++++ src/main/java/ru/javawebinar/topjava/repository/UserMealRepository.java	(revision )
+@@ -22,5 +22,6 @@
+     // ORDERED DATE, TIME
+     Collection<UserMeal> getAll(int userId);
+ 
++    // ORDERED DATE, TIME
+     Collection<UserMeal> getBetween(LocalDateTime startDate, LocalDateTime endDate, int userId);
+ }
+Index: src/main/java/ru/javawebinar/topjava/web/UserServlet.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/web/UserServlet.java	(date 1443048423000)
++++ src/main/java/ru/javawebinar/topjava/web/UserServlet.java	(revision )
+@@ -1,5 +1,6 @@
+ package ru.javawebinar.topjava.web;
+ 
++import ru.javawebinar.topjava.LoggedUser;
+ import ru.javawebinar.topjava.LoggerWrapper;
+ 
+ import javax.servlet.ServletException;
+@@ -14,6 +15,12 @@
+  */
+ public class UserServlet extends HttpServlet {
+     private static final LoggerWrapper LOG = LoggerWrapper.get(UserServlet.class);
++
++    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
++        int userId = Integer.valueOf(request.getParameter("userId"));
++        LoggedUser.setId(userId);
++        response.sendRedirect("meals");
++    }
+ 
+     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+         LOG.debug("redirect to userList");
+Index: src/main/java/ru/javawebinar/topjava/repository/mock/MockUserRepositoryImpl.java
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/repository/mock/MockUserRepositoryImpl.java	(date 1443048423000)
++++ src/main/java/ru/javawebinar/topjava/repository/mock/InMemoryUserRepositoryImpl.java	(revision )
+@@ -1,48 +1,57 @@
+ package ru.javawebinar.topjava.repository.mock;
+ 
+ import org.springframework.stereotype.Repository;
+-import ru.javawebinar.topjava.LoggerWrapper;
++import ru.javawebinar.topjava.model.Role;
+ import ru.javawebinar.topjava.model.User;
+ import ru.javawebinar.topjava.repository.UserRepository;
+ 
+-import java.util.Collections;
+-import java.util.List;
++import java.util.Collection;
++import java.util.Map;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.concurrent.atomic.AtomicInteger;
+ 
+ /**
+  * GKislin
+  * 15.06.2015.
+  */
+ @Repository
+-public class MockUserRepositoryImpl implements UserRepository {
+-    private static final LoggerWrapper LOG = LoggerWrapper.get(MockUserRepositoryImpl.class);
++public class InMemoryUserRepositoryImpl implements UserRepository {
++    private Map<Integer, User> repository = new ConcurrentHashMap<>();
++    private AtomicInteger counter = new AtomicInteger(0);
+ 
+-    @Override
+-    public boolean delete(int id) {
+-        LOG.info("delete " + id);
+-        return true;
++    public static final int USER_ID = 1;
++    public static final int ADMIN_ID = 2;
++
++    {
++        save(new User(1, "User", "user@yandex.ru", "password", Role.ROLE_USER));
++        save(new User(2, "Admin", "admin@gmail.com", "admin", Role.ROLE_ADMIN));
+     }
+ 
+     @Override
+     public User save(User user) {
+-        LOG.info("save " + user);
+-        return user;
++        if (user.isNew()) {
++            user.setId(counter.incrementAndGet());
+-    }
++        }
++        return repository.put(user.getId(), user);
++    }
+ 
+     @Override
++    public boolean delete(int id) {
++        return repository.remove(id) != null;
++    }
++
++    @Override
+     public User get(int id) {
+-        LOG.info("get " + id);
+-        return null;
++        return repository.get(id);
+     }
+ 
+     @Override
+-    public List<User> getAll() {
+-        LOG.info("getAll");
+-        return Collections.emptyList();
++    public Collection<User> getAll() {
++        return repository.values();
+     }
+ 
+     @Override
+     public User getByEmail(String email) {
+-        LOG.info("getByEmail " + email);
+-        return null;
++        return getAll().stream().filter(u -> u.getEmail().equals(email)).findFirst().orElse(null);
+     }
+ }
+Index: src/main/java/ru/javawebinar/topjava/util/TimeUtil.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/util/TimeUtil.java	(date 1443048423000)
++++ src/main/java/ru/javawebinar/topjava/util/TimeUtil.java	(revision )
+@@ -1,5 +1,8 @@
+ package ru.javawebinar.topjava.util;
+ 
++import org.springframework.util.StringUtils;
++
++import java.time.LocalDate;
+ import java.time.LocalDateTime;
+ import java.time.LocalTime;
+ import java.time.format.DateTimeFormatter;
+@@ -10,6 +13,8 @@
+  */
+ public class TimeUtil {
+     public static final DateTimeFormatter DATE_TME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
++    public static final LocalDate MIN_DATE = LocalDate.of(0, 1, 1);
++    public static final LocalDate MAX_DATE = LocalDate.of(3000, 1, 1);
+ 
+     public static boolean isBetween(LocalTime lt, LocalTime startTime, LocalTime endTime) {
+         return lt.compareTo(startTime) >= 0 && lt.compareTo(endTime) <= 0;
+@@ -21,5 +26,13 @@
+ 
+     public static String toString(LocalDateTime ldt) {
+         return ldt == null ? "" : ldt.format(DATE_TME_FORMATTER);
++    }
++
++    public static LocalDate parseLocalDate(String str, LocalDate def) {
++        return StringUtils.isEmpty(str) ? def : LocalDate.parse(str);
++    }
++
++    public static LocalTime parseLocalTime(String str, LocalTime def) {
++        return StringUtils.isEmpty(str) ? def : LocalTime.parse(str);
+     }
+-}
++}
+\ No newline at end of file
+Index: src/main/java/ru/javawebinar/topjava/service/UserService.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/service/UserService.java	(date 1443048423000)
++++ src/main/java/ru/javawebinar/topjava/service/UserService.java	(revision )
+@@ -4,7 +4,7 @@
+ import ru.javawebinar.topjava.model.User;
+ import ru.javawebinar.topjava.util.exception.NotFoundException;
+ 
+-import java.util.List;
++import java.util.Collection;
+ 
+ /**
+  * User: gkislin
+@@ -20,7 +20,7 @@
+ 
+     User getByEmail(String email) throws NotFoundException;
+ 
+-    List<User> getAll();
++    Collection<User> getAll();
+ 
+     void update(User user) throws NotFoundException;
+ }
+Index: src/main/java/ru/javawebinar/topjava/repository/UserRepository.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/repository/UserRepository.java	(date 1443048423000)
++++ src/main/java/ru/javawebinar/topjava/repository/UserRepository.java	(revision )
+@@ -2,7 +2,7 @@
+ 
+ import ru.javawebinar.topjava.model.User;
+ 
+-import java.util.List;
++import java.util.Collection;
+ 
+ /**
+  * User: gkislin
+@@ -20,5 +20,5 @@
+     // null if not found
+     User getByEmail(String email);
+ 
+-    List<User> getAll();
++    Collection<User> getAll();
+ }
+Index: src/main/java/ru/javawebinar/topjava/repository/mock/InMemoryUserMealRepositoryImpl.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/repository/mock/InMemoryUserMealRepositoryImpl.java	(date 1443048423000)
++++ src/main/java/ru/javawebinar/topjava/repository/mock/InMemoryUserMealRepositoryImpl.java	(revision )
+@@ -8,57 +8,78 @@
+ import java.time.LocalDateTime;
+ import java.time.Month;
+ import java.util.Collection;
++import java.util.Comparator;
+ import java.util.Map;
+ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.concurrent.atomic.AtomicInteger;
+ import java.util.stream.Collectors;
+ 
++import static ru.javawebinar.topjava.repository.mock.InMemoryUserRepositoryImpl.ADMIN_ID;
++import static ru.javawebinar.topjava.repository.mock.InMemoryUserRepositoryImpl.USER_ID;
++
+ /**
+  * GKislin
+  * 15.09.2015.
+  */
+ @Repository
+ public class InMemoryUserMealRepositoryImpl implements UserMealRepository {
+-    private Map<Integer, UserMeal> repository = new ConcurrentHashMap<>();
++
++    public static final Comparator<UserMeal> USER_MEAL_COMPARATOR = (um1, um2) -> um2.getDateTime().compareTo(um1.getDateTime());
++
++    // Map  userId -> (mealId-> meal)
++    private Map<Integer, Map<Integer, UserMeal>> repository = new ConcurrentHashMap<>();
+     private AtomicInteger counter = new AtomicInteger(0);
+ 
+     {
+-        save(new UserMeal(LocalDateTime.of(2015, Month.MAY, 30, 10, 0), "Завтрак", 500), 1);
+-        save(new UserMeal(LocalDateTime.of(2015, Month.MAY, 30, 13, 0), "Обед", 1000), 1);
+-        save(new UserMeal(LocalDateTime.of(2015, Month.MAY, 30, 20, 0), "Ужин", 500), 1);
+-        save(new UserMeal(LocalDateTime.of(2015, Month.MAY, 31, 10, 0), "Завтрак", 1000), 1);
+-        save(new UserMeal(LocalDateTime.of(2015, Month.MAY, 31, 13, 0), "Обед", 500), 1);
+-        save(new UserMeal(LocalDateTime.of(2015, Month.MAY, 31, 20, 0), "Ужин", 510), 1);
++        save(new UserMeal(LocalDateTime.of(2015, Month.MAY, 30, 10, 0), "Завтрак", 500), USER_ID);
++        save(new UserMeal(LocalDateTime.of(2015, Month.MAY, 30, 13, 0), "Обед", 1000), USER_ID);
++        save(new UserMeal(LocalDateTime.of(2015, Month.MAY, 30, 20, 0), "Ужин", 500), USER_ID);
++        save(new UserMeal(LocalDateTime.of(2015, Month.MAY, 31, 10, 0), "Завтрак", 1000), USER_ID);
++        save(new UserMeal(LocalDateTime.of(2015, Month.MAY, 31, 13, 0), "Обед", 500), USER_ID);
++        save(new UserMeal(LocalDateTime.of(2015, Month.MAY, 31, 20, 0), "Ужин", 510), USER_ID);
++
++        save(new UserMeal(LocalDateTime.of(2015, Month.JUNE, 1, 14, 0), "Админ ланч", 510), ADMIN_ID);
++        save(new UserMeal(LocalDateTime.of(2015, Month.JUNE, 1, 21, 0), "Админ ужин ", 510), ADMIN_ID);
+     }
+ 
+     @Override
+     public UserMeal save(UserMeal userMeal, int userId) {
++        Integer mealId = userMeal.getId();
++
+         if (userMeal.isNew()) {
+-            userMeal.setId(counter.incrementAndGet());
++            mealId = counter.incrementAndGet();
++            userMeal.setId(mealId);
++        } else if (get(mealId, userId) == null) {
++            return null;
+         }
+-        return repository.put(userMeal.getId(), userMeal);
++        Map<Integer, UserMeal> userMeals = repository.computeIfAbsent(userId, ConcurrentHashMap::new);
++        userMeals.put(mealId, userMeal);
++        return userMeal;
++
+     }
+ 
+     @Override
+     public boolean delete(int id, int userId) {
+-        return repository.remove(id) != null;
++        Map<Integer, UserMeal> userMeals = repository.get(userId);
++        return userMeals != null && userMeals.remove(id) != null;
+     }
+ 
+     @Override
+     public UserMeal get(int id, int userId) {
+-        return repository.get(id);
++        Map<Integer, UserMeal> userMeals = repository.get(userId);
++        return userMeals == null ? null : userMeals.get(id);
+     }
+ 
+     @Override
+     public Collection<UserMeal> getAll(int userId) {
+-        return repository.values();
++        return repository.get(userId).values().stream().sorted(USER_MEAL_COMPARATOR).collect(Collectors.toList());
+     }
+ 
+     @Override
+     public Collection<UserMeal> getBetween(LocalDateTime startDateTime, LocalDateTime endDateTime, int userId) {
+-        return repository.values().stream()
++        return getAll(userId).stream()
+                 .filter(um -> TimeUtil.isBetween(um.getDateTime(), startDateTime, endDateTime))
++                .sorted(USER_MEAL_COMPARATOR)
+                 .collect(Collectors.toList());
+     }
+-}
++}
+\ No newline at end of file
+-
+\ No newline at end of file
+Index: src/main/webapp/mealEdit.jsp
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/webapp/mealEdit.jsp	(date 1443048423000)
++++ src/main/webapp/mealEdit.jsp	(revision )
+@@ -4,24 +4,7 @@
+ <html>
+ <head>
+     <title>Meal</title>
+-    <style>
+-        dl {
+-            background: none repeat scroll 0 0 #FAFAFA;
+-            margin: 8px 0;
+-            padding: 0;
+-        }
+-
+-        dt {
+-            display: inline-block;
+-            width: 170px;
+-        }
+-
+-        dd {
+-            display: inline-block;
+-            margin-left: 8px;
+-            vertical-align: top;
+-        }
+-    </style>
++    <link rel="stylesheet" href="css/style.css">
+ </head>
+ <body>
+ <section>
+Index: src/main/java/ru/javawebinar/topjava/service/UserServiceImpl.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/service/UserServiceImpl.java	(date 1443048423000)
++++ src/main/java/ru/javawebinar/topjava/service/UserServiceImpl.java	(revision )
+@@ -7,7 +7,7 @@
+ import ru.javawebinar.topjava.util.exception.ExceptionUtil;
+ import ru.javawebinar.topjava.util.exception.NotFoundException;
+ 
+-import java.util.List;
++import java.util.Collection;
+ 
+ /**
+  * GKislin
+@@ -35,7 +35,7 @@
+         return ExceptionUtil.check(repository.getByEmail(email), "email=" + email);
+     }
+ 
+-    public List<User> getAll() {
++    public Collection<User> getAll() {
+         return repository.getAll();
+     }
+ 
+Index: src/main/java/ru/javawebinar/topjava/LoggedUser.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/LoggedUser.java	(date 1443048423000)
++++ src/main/java/ru/javawebinar/topjava/LoggedUser.java	(revision )
+@@ -5,12 +5,17 @@
+  * 06.03.2015.
+  */
+ public class LoggedUser {
++    public static int id = 1;
+ 
+     public static int id() {
+-        return 1;
++        return id;
+     }
+ 
+     public static int getCaloriesPerDay() {
+         return 2000;
++    }
++
++    public static void setId(int id) {
++        LoggedUser.id = id;
+     }
+ }
+Index: src/main/java/ru/javawebinar/topjava/web/user/AdminRestController.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/web/user/AdminRestController.java	(date 1443048423000)
++++ src/main/java/ru/javawebinar/topjava/web/user/AdminRestController.java	(revision )
+@@ -3,7 +3,7 @@
+ import org.springframework.stereotype.Controller;
+ import ru.javawebinar.topjava.model.User;
+ 
+-import java.util.List;
++import java.util.Collection;
+ 
+ /**
+  * GKislin
+@@ -12,7 +12,7 @@
+ @Controller
+ public class AdminRestController extends AbstractUserController {
+ 
+-    public List<User> getAll() {
++    public Collection<User> getAll() {
+         return super.getAll();
+     }
+ 
+Index: src/main/java/ru/javawebinar/topjava/web/MealServlet.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/web/MealServlet.java	(date 1443048423000)
++++ src/main/java/ru/javawebinar/topjava/web/MealServlet.java	(revision )
+@@ -1,11 +1,11 @@
+ package ru.javawebinar.topjava.web;
+ 
+-import ru.javawebinar.topjava.LoggedUser;
++import org.springframework.context.ConfigurableApplicationContext;
++import org.springframework.context.support.ClassPathXmlApplicationContext;
+ import ru.javawebinar.topjava.LoggerWrapper;
+ import ru.javawebinar.topjava.model.UserMeal;
+-import ru.javawebinar.topjava.repository.UserMealRepository;
+-import ru.javawebinar.topjava.repository.mock.InMemoryUserMealRepositoryImpl;
+-import ru.javawebinar.topjava.util.UserMealsUtil;
++import ru.javawebinar.topjava.util.TimeUtil;
++import ru.javawebinar.topjava.web.meal.UserMealRestController;
+ 
+ import javax.servlet.ServletConfig;
+ import javax.servlet.ServletException;
+@@ -13,7 +13,9 @@
+ import javax.servlet.http.HttpServletRequest;
+ import javax.servlet.http.HttpServletResponse;
+ import java.io.IOException;
++import java.time.LocalDate;
+ import java.time.LocalDateTime;
++import java.time.LocalTime;
+ import java.util.Objects;
+ 
+ /**
+@@ -23,43 +25,60 @@
+ public class MealServlet extends HttpServlet {
+     private static final LoggerWrapper LOG = LoggerWrapper.get(MealServlet.class);
+ 
+-    private UserMealRepository repository;
++    private ConfigurableApplicationContext springContext;
++    private UserMealRestController mealController;
+ 
+     @Override
+     public void init(ServletConfig config) throws ServletException {
+         super.init(config);
+-        repository = new InMemoryUserMealRepositoryImpl();
++        springContext = new ClassPathXmlApplicationContext("spring/spring-app.xml");
++        mealController = springContext.getBean(UserMealRestController.class);
+     }
+ 
++    @Override
++    public void destroy() {
++        springContext.close();
++        super.destroy();
++    }
++
+     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws javax.servlet.ServletException, IOException {
+         request.setCharacterEncoding("UTF-8");
++        String action = request.getParameter("action");
++        if (action == null) {
+-        String id = request.getParameter("id");
+-        UserMeal userMeal = new UserMeal(id.isEmpty() ? null : Integer.valueOf(id),
+-                LocalDateTime.parse(request.getParameter("dateTime")),
+-                request.getParameter("description"),
+-                Integer.valueOf(request.getParameter("calories")));
+-        LOG.info(userMeal.isNew() ? "Create {}" : "Update {}", userMeal);
++            String id = request.getParameter("id");
++            UserMeal userMeal = new UserMeal(id.isEmpty() ? null : Integer.valueOf(id),
++                    LocalDateTime.parse(request.getParameter("dateTime")),
++                    request.getParameter("description"),
++                    Integer.valueOf(request.getParameter("calories")));
++            LOG.info(userMeal.isNew() ? "Create {}" : "Update {}", userMeal);
+-        repository.save(userMeal, LoggedUser.id());
++            mealController.create(userMeal);
+-        response.sendRedirect("meals");
++            response.sendRedirect("meals");
++        } else {
++            LocalDate startDate = TimeUtil.parseLocalDate(request.getParameter("startDate"), TimeUtil.MIN_DATE);
++            LocalDate endDate = TimeUtil.parseLocalDate(request.getParameter("endDate"), TimeUtil.MAX_DATE);
++            LocalTime startTime = TimeUtil.parseLocalTime(request.getParameter("startTime"), LocalTime.MIN);
++            LocalTime endTime = TimeUtil.parseLocalTime(request.getParameter("endTime"), LocalTime.MAX);
++            request.setAttribute("mealList", mealController.getBetween(startDate, startTime, endDate, endTime));
++            request.getRequestDispatcher("/mealList.jsp").forward(request, response);
+-    }
++        }
++    }
+ 
+     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+         String action = request.getParameter("action");
+ 
+         if (action == null) {
+             LOG.info("getAll");
+-            request.setAttribute("mealList",
+-                    UserMealsUtil.getWithExceeded(repository.getAll(LoggedUser.id()), 2000));
++            request.setAttribute("mealList", mealController.getAll());
+             request.getRequestDispatcher("/mealList.jsp").forward(request, response);
+         } else if (action.equals("delete")) {
+             int id = getId(request);
+             LOG.info("Delete {}", id);
+-            repository.delete(id, LoggedUser.id());
++            mealController.delete(id);
+             response.sendRedirect("meals");
+         } else {
+             final UserMeal meal = action.equals("create") ?
+                     new UserMeal(LocalDateTime.now(), "", 1000) :
+-                    repository.get(getId(request), LoggedUser.id());
++                    mealController.get(getId(request));
+             request.setAttribute("meal", meal);
+             request.getRequestDispatcher("mealEdit.jsp").forward(request, response);
+         }
+Index: src/main/webapp/mealList.jsp
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/webapp/mealList.jsp	(date 1443048423000)
++++ src/main/webapp/mealList.jsp	(revision )
+@@ -5,15 +5,32 @@
+ <html>
+ <head>
+     <title>Meal list</title>
+-    <style>
+-        .normal {color: green;}
+-        .exceeded {color: red;}
+-    </style>
++    <link rel="stylesheet" href="css/style.css">
+ </head>
+ <body>
+ <section>
+     <h2><a href="index.html">Home</a></h2>
+     <h3>Meal list</h3>
++    <form method="post" action="meals?action=filter">
++        <dl>
++            <dt>From Date:</dt>
++            <dd><input type="date" name="startDate"></dd>
++        </dl>
++        <dl>
++            <dt>To Date:</dt>
++            <dd><input type="date" name="endDate"></dd>
++        </dl>
++        <dl>
++            <dt>From Time:</dt>
++            <dd><input type="time" name="startTime"></dd>
++        </dl>
++        <dl>
++            <dt>To Time:</dt>
++            <dd><input type="time" name="endTime"></dd>
++        </dl>
++        <button type="submit">Filter</button>
++    </form>
++    <hr>
+     <a href="meals?action=create">Add Meal</a>
+     <hr>
+     <table border="1" cellpadding="8" cellspacing="0">
+\ No newline at end of file
+Index: src/main/webapp/index.html
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/webapp/index.html	(date 1443048423000)
++++ src/main/webapp/index.html	(revision )
+@@ -7,9 +7,16 @@
+ <body>
+ <h2>Проект "<a href="https://github.com/JavaWebinar/topjava04" target="_blank">Top Java."</a></h2>
+ <hr>
++<form method="post" action="users">
++    Login as: <select name="userId">
++    <option value="1" selected>User</option>
++    <option value="2">Admin</option>
++</select>
++    <button type="submit">Выбрать</button>
++</form>
+ <ul>
+-<li><a href="users">User List</a></li>
+-<li><a href="meals">Meal List</a></li>
++    <li><a href="users">User List</a></li>
++    <li><a href="meals">Meal List</a></li>
+ </ul>
+ </body>
+ </html>
+Index: src/main/java/ru/javawebinar/topjava/web/user/AbstractUserController.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/web/user/AbstractUserController.java	(date 1443048423000)
++++ src/main/java/ru/javawebinar/topjava/web/user/AbstractUserController.java	(revision )
+@@ -5,7 +5,7 @@
+ import ru.javawebinar.topjava.model.User;
+ import ru.javawebinar.topjava.service.UserService;
+ 
+-import java.util.List;
++import java.util.Collection;
+ 
+ /**
+  * User: gkislin
+@@ -16,7 +16,7 @@
+     @Autowired
+     private UserService service;
+ 
+-    public List<User> getAll() {
++    public Collection<User> getAll() {
+         LOG.info("getAll");
+         return service.getAll();
+     }

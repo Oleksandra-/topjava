@@ -1,0 +1,77 @@
+Index: src/main/java/ru/javawebinar/topjava/web/meal/UserMealRestController.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/web/meal/UserMealRestController.java	(date 1443632890000)
++++ src/main/java/ru/javawebinar/topjava/web/meal/UserMealRestController.java	(revision )
+@@ -5,8 +5,8 @@
+ import ru.javawebinar.topjava.LoggedUser;
+ import ru.javawebinar.topjava.LoggerWrapper;
+ import ru.javawebinar.topjava.model.UserMeal;
+-import ru.javawebinar.topjava.model.UserMealWithExceed;
+ import ru.javawebinar.topjava.service.UserMealService;
++import ru.javawebinar.topjava.to.UserMealWithExceed;
+ import ru.javawebinar.topjava.util.UserMealsUtil;
+ 
+ import java.time.LocalDate;
+\ No newline at end of file
+Index: src/main/java/ru/javawebinar/topjava/util/UserMealsUtil.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/util/UserMealsUtil.java	(date 1443632890000)
++++ src/main/java/ru/javawebinar/topjava/util/UserMealsUtil.java	(revision )
+@@ -1,7 +1,7 @@
+ package ru.javawebinar.topjava.util;
+ 
+ import ru.javawebinar.topjava.model.UserMeal;
+-import ru.javawebinar.topjava.model.UserMealWithExceed;
++import ru.javawebinar.topjava.to.UserMealWithExceed;
+ 
+ import java.time.LocalDate;
+ import java.time.LocalDateTime;
+Index: src/main/java/ru/javawebinar/topjava/model/UserMealWithExceed.java
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/model/UserMealWithExceed.java	(date 1443632890000)
++++ src/main/java/ru/javawebinar/topjava/to/UserMealWithExceed.java	(revision )
+@@ -1,4 +1,4 @@
+-package ru.javawebinar.topjava.model;
++package ru.javawebinar.topjava.to;
+ 
+ import java.time.LocalDateTime;
+ 
+Index: src/main/webapp/mealList.jsp
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/webapp/mealList.jsp	(date 1443632890000)
++++ src/main/webapp/mealList.jsp	(revision )
+@@ -44,7 +44,7 @@
+         </tr>
+         </thead>
+         <c:forEach items="${mealList}" var="meal">
+-            <jsp:useBean id="meal" scope="page" type="ru.javawebinar.topjava.model.UserMealWithExceed"/>
++            <jsp:useBean id="meal" scope="page" type="ru.javawebinar.topjava.to.UserMealWithExceed"/>
+             <tr class="${meal.exceed ? 'exceeded' : 'normal'}">
+                 <td>
+                    <%--<fmt:parseDate value="${meal.dateTime}" pattern="y-M-dd'T'H:m" var="parsedDate"/>--%>
+\ No newline at end of file
+Index: src/test/java/ru/javawebinar/topjava/SpringMain.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/test/java/ru/javawebinar/topjava/SpringMain.java	(date 1443632890000)
++++ src/test/java/ru/javawebinar/topjava/SpringMain.java	(revision )
+@@ -4,7 +4,7 @@
+ import org.springframework.context.support.ClassPathXmlApplicationContext;
+ import ru.javawebinar.topjava.model.Role;
+ import ru.javawebinar.topjava.model.User;
+-import ru.javawebinar.topjava.model.UserMealWithExceed;
++import ru.javawebinar.topjava.to.UserMealWithExceed;
+ import ru.javawebinar.topjava.web.meal.UserMealRestController;
+ import ru.javawebinar.topjava.web.user.AdminRestController;
+ 

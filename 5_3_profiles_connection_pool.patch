@@ -1,0 +1,219 @@
+Index: src/main/java/ru/javawebinar/topjava/Profiles.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/Profiles.java	(revision )
++++ src/main/java/ru/javawebinar/topjava/Profiles.java	(revision )
+@@ -0,0 +1,13 @@
++package ru.javawebinar.topjava;
++
++/**
++ * User: gkislin
++ * Date: 19.08.2014
++ */
++public class Profiles {
++    public static final String
++            POSTGRES = "postgres",
++            HSQLDB = "hsqldb",
++            JDBC = "jdbc",
++            JPA = "jpa";
++}
+Index: src/test/java/ru/javawebinar/topjava/service/UserMealServiceTest.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/test/java/ru/javawebinar/topjava/service/UserMealServiceTest.java	(date 1444237855000)
++++ src/test/java/ru/javawebinar/topjava/service/UserMealServiceTest.java	(revision )
+@@ -7,6 +7,7 @@
+ import org.junit.runner.Description;
+ import org.junit.runner.RunWith;
+ import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.test.context.ActiveProfiles;
+ import org.springframework.test.context.ContextConfiguration;
+ import org.springframework.test.context.jdbc.Sql;
+ import org.springframework.test.context.jdbc.SqlConfig;
+@@ -22,6 +23,7 @@
+ import java.util.concurrent.TimeUnit;
+ 
+ import static ru.javawebinar.topjava.MealTestData.*;
++import static ru.javawebinar.topjava.Profiles.POSTGRES;
+ import static ru.javawebinar.topjava.UserTestData.ADMIN_ID;
+ import static ru.javawebinar.topjava.UserTestData.USER_ID;
+ 
+@@ -31,6 +33,7 @@
+ })
+ @RunWith(SpringJUnit4ClassRunner.class)
+ @Sql(scripts = "classpath:db/populateDB.sql", config = @SqlConfig(encoding = "UTF-8"))
++@ActiveProfiles(POSTGRES)
+ public class UserMealServiceTest {
+     private static final LoggerWrapper LOG = LoggerWrapper.get(UserMealServiceTest.class);
+ 
+\ No newline at end of file
+Index: src/test/java/ru/javawebinar/topjava/service/UserServiceTest.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/test/java/ru/javawebinar/topjava/service/UserServiceTest.java	(date 1444237855000)
++++ src/test/java/ru/javawebinar/topjava/service/UserServiceTest.java	(revision )
+@@ -4,6 +4,7 @@
+ import org.junit.runner.RunWith;
+ import org.springframework.beans.factory.annotation.Autowired;
+ import org.springframework.dao.DataAccessException;
++import org.springframework.test.context.ActiveProfiles;
+ import org.springframework.test.context.ContextConfiguration;
+ import org.springframework.test.context.jdbc.Sql;
+ import org.springframework.test.context.jdbc.SqlConfig;
+@@ -17,6 +18,7 @@
+ import java.util.Collection;
+ import java.util.Collections;
+ 
++import static ru.javawebinar.topjava.Profiles.POSTGRES;
+ import static ru.javawebinar.topjava.UserTestData.*;
+ 
+ @ContextConfiguration({
+@@ -25,6 +27,7 @@
+ })
+ @RunWith(SpringJUnit4ClassRunner.class)
+ @Sql(scripts = "classpath:db/populateDB.sql", config = @SqlConfig(encoding = "UTF-8"))
++@ActiveProfiles(POSTGRES)
+ public class UserServiceTest {
+ 
+     @Autowired
+\ No newline at end of file
+Index: pom.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- pom.xml	(date 1444237855000)
++++ pom.xml	(revision )
+@@ -13,6 +13,7 @@
+ 
+     <properties>
+         <java.version>1.8</java.version>
++        <tomcat.version>7.0.57</tomcat.version>
+ 
+         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+@@ -104,19 +105,7 @@
+             </exclusions>
+         </dependency>
+ 
+-        <!--DataBase-->
+         <dependency>
+-            <groupId>org.postgresql</groupId>
+-            <artifactId>postgresql</artifactId>
+-            <version>9.4-1203-jdbc42</version>
+-        </dependency>
+-        <dependency>
+-            <groupId>org.hsqldb</groupId>
+-            <artifactId>hsqldb</artifactId>
+-            <version>2.3.2</version>
+-        </dependency>
+-
+-        <dependency>
+             <groupId>org.springframework</groupId>
+             <artifactId>spring-orm</artifactId>
+             <version>${spring.version}</version>
+@@ -154,6 +143,34 @@
+     </dependencies>
+ 
+     <profiles>
++        <profile>
++            <id>hsqldb</id>
++            <dependencies>
++                <dependency>
++                    <groupId>org.hsqldb</groupId>
++                    <artifactId>hsqldb</artifactId>
++                    <version>2.3.2</version>
++                </dependency>
++            </dependencies>
++        </profile>
++        <profile>
++            <id>postgres</id>
++            <dependencies>
++                <dependency>
++                    <groupId>org.postgresql</groupId>
++                    <artifactId>postgresql</artifactId>
++                    <version>9.4-1201-jdbc41</version>
++                </dependency>
++                <dependency>
++                    <groupId>org.apache.tomcat</groupId>
++                    <artifactId>tomcat-jdbc</artifactId>
++                    <version>${tomcat.version}</version>
++                </dependency>
++            </dependencies>
++            <activation>
++                <activeByDefault>true</activeByDefault>
++            </activation>
++        </profile>
+     </profiles>
+ 
+     <dependencyManagement>
+Index: src/main/resources/spring/spring-db.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/resources/spring/spring-db.xml	(date 1444237855000)
++++ src/main/resources/spring/spring-db.xml	(revision )
+@@ -7,11 +7,6 @@
+        xsi:schemaLocation="http://www.springframework.org/schema/beans
+          http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+ 
+-    <!-- Change DB by comment/uncomment property-placeholder -->
+-
+-    <!--<context:property-placeholder location="classpath:db/postgres.properties" system-properties-mode="OVERRIDE"/>-->
+-    <context:property-placeholder location="classpath:db/hsqldb.properties" system-properties-mode="OVERRIDE"/>
+-
+     <context:component-scan base-package="ru.javawebinar.**.repository.jpa"/>
+ 
+     <jdbc:initialize-database data-source="dataSource" enabled="${database.init}">
+@@ -19,15 +14,6 @@
+         <jdbc:script encoding="utf-8" location="classpath:db/populateDB.sql"/>
+     </jdbc:initialize-database>
+ 
+-    <!--no pooling-->
+-    <bean id="dataSource"
+-          class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+-        <property name="driverClassName" value="${database.driverClassName}"/>
+-        <property name="url" value="${database.url}"/>
+-        <property name="username" value="${database.username}"/>
+-        <property name="password" value="${database.password}"/>
+-    </bean>
+-
+     <bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean"
+           p:dataSource-ref="dataSource"
+           p:packagesToScan="ru.javawebinar.**.model">
+@@ -64,4 +50,27 @@
+             <constructor-arg ref="dataSource"/>
+         </bean>
+     -->
++
++    <beans profile="hsqldb">
++        <context:property-placeholder location="classpath:db/hsqldb.properties" system-properties-mode="OVERRIDE"/>
++
++        <!--no pooling-->
++        <bean id="dataSource"
++              class="org.springframework.jdbc.datasource.DriverManagerDataSource"
++              p:driverClassName="${database.driverClassName}"
++              p:url="${database.url}"
++              p:username="${database.username}"
++              p:password="${database.password}"/>
++    </beans>
++
++    <beans profile="postgres">
++        <context:property-placeholder location="classpath:db/postgres.properties" system-properties-mode="OVERRIDE"/>
++
++        <bean id="dataSource"
++              class="org.apache.tomcat.jdbc.pool.DataSource"
++              p:driverClassName="${database.driverClassName}"
++              p:url="${database.url}"
++              p:username="${database.username}"
++              p:password="${database.password}"/>
++    </beans>
+ </beans>
+\ No newline at end of file

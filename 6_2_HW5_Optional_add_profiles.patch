@@ -1,0 +1,83 @@
+Index: src/test/resources/logback-test.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/test/resources/logback-test.xml	(date 1444686438000)
++++ src/test/resources/logback-test.xml	(revision )
+@@ -11,6 +11,9 @@
+         </encoder>
+     </appender>
+ 
++    <!--log sql parameter -->
++    <!--<logger name="org.hibernate.type" level="trace"/>-->
++
+     <logger name="org.springframework.jdbc" level="debug"/>
+     <logger name="ru.javawebinar.topjava" level="debug"/>
+ 
+\ No newline at end of file
+Index: src/main/java/ru/javawebinar/topjava/web/MealServlet.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/main/java/ru/javawebinar/topjava/web/MealServlet.java	(date 1444686438000)
++++ src/main/java/ru/javawebinar/topjava/web/MealServlet.java	(revision )
+@@ -1,8 +1,8 @@
+ package ru.javawebinar.topjava.web;
+ 
+-import org.springframework.context.ConfigurableApplicationContext;
+ import org.springframework.context.support.ClassPathXmlApplicationContext;
+ import ru.javawebinar.topjava.LoggerWrapper;
++import ru.javawebinar.topjava.Profiles;
+ import ru.javawebinar.topjava.model.UserMeal;
+ import ru.javawebinar.topjava.util.TimeUtil;
+ import ru.javawebinar.topjava.web.meal.UserMealRestController;
+@@ -25,13 +25,16 @@
+ public class MealServlet extends HttpServlet {
+     private static final LoggerWrapper LOG = LoggerWrapper.get(MealServlet.class);
+ 
+-    private ConfigurableApplicationContext springContext;
++    private ClassPathXmlApplicationContext springContext;
+     private UserMealRestController mealController;
+ 
+     @Override
+     public void init(ServletConfig config) throws ServletException {
+         super.init(config);
+-        springContext = new ClassPathXmlApplicationContext("spring/spring-app.xml", "spring/spring-db.xml");
++        springContext = new ClassPathXmlApplicationContext();
++        springContext.getEnvironment().setActiveProfiles(Profiles.POSTGRES, Profiles.DATAJPA);
++        springContext.setConfigLocations("spring/spring-app.xml", "spring/spring-db.xml");
++        springContext.refresh();
+         mealController = springContext.getBean(UserMealRestController.class);
+     }
+ 
+Index: src/test/java/ru/javawebinar/topjava/SpringMain.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- src/test/java/ru/javawebinar/topjava/SpringMain.java	(date 1444686438000)
++++ src/test/java/ru/javawebinar/topjava/SpringMain.java	(revision )
+@@ -1,7 +1,6 @@
+ package ru.javawebinar.topjava;
+ 
+-import org.springframework.context.ConfigurableApplicationContext;
+-import org.springframework.context.support.ClassPathXmlApplicationContext;
++import org.springframework.context.support.GenericXmlApplicationContext;
+ import ru.javawebinar.topjava.model.Role;
+ import ru.javawebinar.topjava.model.User;
+ import ru.javawebinar.topjava.to.UserMealWithExceed;
+@@ -21,7 +20,11 @@
+ public class SpringMain {
+     public static void main(String[] args) {
+         // java 7 Automatic resource management
+-        try (ConfigurableApplicationContext appCtx = new ClassPathXmlApplicationContext("spring/spring-app.xml","spring/mock.xml")) {
++        try (GenericXmlApplicationContext appCtx = new GenericXmlApplicationContext()) {
++            appCtx.getEnvironment().setActiveProfiles(Profiles.POSTGRES, Profiles.DATAJPA);
++            appCtx.load("spring/spring-app.xml", "spring/spring-db.xml");
++            appCtx.refresh();
++
+             System.out.println(Arrays.toString(appCtx.getBeanDefinitionNames()));
+             AdminRestController adminUserController = appCtx.getBean(AdminRestController.class);
+             System.out.println(adminUserController.create(new User(1, "userName", "email", "password", Role.ROLE_ADMIN)));
